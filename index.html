@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ChatP2P - Secure Messaging</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0f1a;
+      --bg-secondary: #111827;
+      --bg-tertiary: #1f2937;
+      --accent: #10b981;
+      --accent-light: #34d399;
+      --accent-dark: #059669;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --border: #374151;
+      --glass: rgba(17, 24, 39, 0.8);
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .bg-mesh {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: 
+        radial-gradient(ellipse at 20% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 70%),
+        var(--bg-primary);
+    }
+
+    .glass-panel {
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .message-bubble {
+      max-width: 80%;
+      word-wrap: break-word;
+      animation: messageIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes messageIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
+
+    .pulse-ring::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      animation: pulse-ring 1.5s infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .float-animation {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background 0.3s;
+    }
+
+    .status-dot.connected {
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    .chat-container {
+      height: calc(100vh - 140px);
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+
+    .chat-container::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .chat-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-container::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .input-area {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      transform: scale(0.9) translateY(20px);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .modal-overlay.active .modal-content {
+      transform: scale(1) translateY(0);
+    }
+
+    .call-container {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: var(--bg-primary);
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .remote-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .local-video {
+      position: absolute;
+      width: 120px;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 12px;
+      bottom: 100px;
+      right: 20px;
+      border: 2px solid var(--accent);
+      z-index: 10;
+    }
+
+    .call-controls {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 16px;
+      z-index: 20;
+    }
+
+    .call-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .call-btn.end {
+      background: var(--danger);
+    }
+
+    .call-btn.end:hover {
+      background: #dc2626;
+      transform: scale(1.1);
+    }
+
+    .file-preview {
+      max-width: 250px;
+      max-height: 200px;
+      border-radius: 12px;
+      margin-bottom: 4px;
+    }
+
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-4px); }
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--text-secondary);
+      border-radius: 50%;
+      animation: typing 1s infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    .nav-tab {
+      position: relative;
+      transition: color 0.3s;
+    }
+
+    .nav-tab.active {
+      color: var(--accent);
+    }
+
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    .contact-item {
+      transition: all 0.2s;
+    }
+
+    .contact-item:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .unread-badge {
+      min-width: 20px;
+      height: 20px;
+      background: var(--accent);
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh"></div>
+
+  <!-- Main App -->
+  <div id="app" class="min-h-screen">
+    <!-- Connection Setup Screen -->
+    <div id="setupScreen" class="min-h-screen flex items-center justify-content-center p-4">
+      <div class="w-full max-w-md mx-auto">
+        <!-- Logo -->
+        <div class="text-center mb-8 float-animation">
+          <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h1 class="text-3xl font-bold tracking-tight">ChatP2P</h1>
+          <p class="text-gray-400 mt-2">Pesan langsung tanpa server</p>
+        </div>
+
+        <!-- Connection Card -->
+        <div class="glass-panel rounded-2xl p-6">
+          <div id="profileSetup">
+            <h2 class="text-xl font-semibold mb-4">Profil Anda</h2>
+            <div class="flex items-center gap-4 mb-6">
+              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-2xl font-bold" id="avatarPreview">
+                U
+              </div>
+              <input type="text" id="usernameInput" placeholder="Nama Anda" 
+                class="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors">
+            </div>
+            <button onclick="saveProfile()" class="w-full btn-primary text-white font-medium py-3 rounded-xl">
+              Simpan Profil
+            </button>
+          </div>
+
+          <div id="connectionSetup" class="hidden">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-semibold">Koneksi P2P</h2>
+              <div class="flex items-center gap-2">
+                <div class="status-dot" id="connectionDot"></div>
+                <span class="text-sm text-gray-400" id="connectionStatus">Tidak terhubung</span>
+              </div>
+            </div>
+
+            <!-- Create/Join buttons -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <button onclick="createOffer()" class="btn-secondary py-3 rounded-xl font-medium">
+                Buat Room
+              </button>
+              <button onclick="showJoinModal()" class="btn-secondary py-3 rounded-xl font-medium">
+                Gabung Room
+              </button>
+            </div>
+
+            <!-- Offer display -->
+            <div id="offerSection" class="hidden">
+              <label class="text-sm text-gray-400 mb-2 block">Bagikan kode ini:</label>
+              <textarea id="offerCode" readonly class="w-full h-24 bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs font-mono resize-none"></textarea>
+              <button onclick="copyOffer()" class="w-full mt-2 btn-secondary py-2 rounded-xl text-sm">
+                Salin Kode
+              </button>
+            </div>
+
+            <!-- Answer input -->
+            <div id="answerSection" class="hidden mt-4">
+              <label class="text-sm text-gray-400 mb-2 block">Tempel kode jawaban:</label>
+              <textarea id="answerInput" class="w-full h-24 bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs font-mono resize-none" placeholder="Tempel kode jawaban dari lawan..."></textarea>
+              <button onclick="setAnswer()" class="w-full mt-2 btn-primary py-2 rounded-xl text-sm">
+                Hubungkan
+              </button>
+            </div>
+
+            <!-- Connected info -->
+            <div id="connectedInfo" class="hidden text-center py-4">
+              <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-emerald-500">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22,4 12,14.01 9,11.01"/>
+                </svg>
+              </div>
+              <h3 class="font-semibold text-lg text-emerald-500">Terhubung!</h3>
+              <p class="text-gray-400 text-sm mt-1">Koneksi P2P berhasil dibuat</p>
+              <button onclick="startChat()" class="mt-4 btn-primary px-6 py-2 rounded-xl text-sm">
+                Mulai Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div id="chatScreen" class="hidden">
+      <!-- Header -->
+      <header class="glass-panel fixed top-0 left-0 right-0 z-40 px-4 py-3">
+        <div class="flex items-center justify-between max-w-2xl mx-auto">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center font-bold" id="peerAvatar">
+              P
+            </div>
+            <div>
+              <h2 class="font-semibold" id="peerName">Peer</h2>
+              <div class="flex items-center gap-1">
+                <div class="status-dot connected" style="width:6px;height:6px;"></div>
+                <span class="text-xs text-emerald-500">Online</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="startVoiceCall()" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors" title="Voice Call">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </button>
+            <button onclick="startVideoCall()" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors" title="Video Call">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="23 7 16 12 23 17 23 7"/>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+              </svg>
+            </button>
+            <button onclick="showSettings()" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Chat Messages -->
+      <div class="chat-container px-4 pt-20 pb-24" id="chatMessages">
+        <!-- Messages will be rendered here -->
+      </div>
+
+      <!-- Input Area -->
+      <div class="input-area glass-panel p-3">
+        <div class="max-w-2xl mx-auto flex items-end gap-2">
+          <input type="file" id="fileInput" accept="image/*,video/*" class="hidden" onchange="handleFileSelect(event)">
+          <button onclick="document.getElementById('fileInput').click()" class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-gray-700 transition-colors flex-shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          <div class="flex-1 bg-gray-800 rounded-2xl px-4 py-2">
+            <textarea id="messageInput" rows="1" placeholder="Ketik pesan..." 
+              class="w-full bg-transparent focus:outline-none resize-none max-h-32"
+              onkeydown="handleKeyDown(event)" oninput="autoResize(this)"></textarea>
+          </div>
+          <button onclick="sendMessage()" class="w-10 h-10 rounded-full btn-primary flex items-center justify-center flex-shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Call Screen -->
+    <div id="callScreen" class="call-container hidden">
+      <div class="video-container">
+        <video id="remoteVideo" class="remote-video" autoplay playsinline></video>
+        <video id="localVideo" class="local-video" autoplay playsinline muted></video>
+        
+        <div id="callStatus" class="absolute top-20 left-0 right-0 text-center">
+          <h3 class="text-xl font-semibold" id="callStatusText">Menghubungkan...</h3>
+          <p class="text-gray-400 text-sm mt-1" id="callDuration">00:00</p>
+        </div>
+
+        <div class="call-controls">
+          <button onclick="toggleMute()" class="call-btn bg-gray-800" id="muteBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+          <button onclick="toggleVideo()" class="call-btn bg-gray-800" id="videoBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </button>
+          <button onclick="endCall()" class="call-btn end">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div id="incomingCallModal" class="modal-overlay">
+      <div class="modal-content glass-panel rounded-2xl p-6 w-full max-w-sm mx-4 text-center">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center relative pulse-ring">
+          <span class="text-3xl font-bold" id="callerAvatar">P</span>
+        </div>
+        <h3 class="text-xl font-semibold" id="callerName">Peer</h3>
+        <p class="text-gray-400 mt-1" id="callTypeText">Panggilan masuk...</p>
+        <div class="flex justify-center gap-4 mt-6">
+          <button onclick="rejectCall()" class="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </button>
+          <button onclick="acceptCall()" class="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center hover:bg-emerald-600 transition-colors">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Join Room Modal -->
+    <div id="joinModal" class="modal-overlay">
+      <div class="modal-content glass-panel rounded-2xl p-6 w-full max-w-md mx-4">
+        <h3 class="text-xl font-semibold mb-4">Gabung Room</h3>
+        <label class="text-sm text-gray-400 mb-2 block">Tempel kode room:</label>
+        <textarea id="offerInput" class="w-full h-32 bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs font-mono resize-none" placeholder="Tempel kode room dari lawan..."></textarea>
+        <div class="flex gap-3 mt-4">
+          <button onclick="closeJoinModal()" class="flex-1 btn-secondary py-2 rounded-xl">Batal</button>
+          <button onclick="joinRoom()" class="flex-1 btn-primary py-2 rounded-xl">Gabung</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay">
+      <div class="modal-content glass-panel rounded-2xl p-6 w-full max-w-md mx-4">
+        <h3 class="text-xl font-semibold mb-4">Pengaturan</h3>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between py-3 border-b border-gray-700">
+            <span>Profil</span>
+            <button onclick="editProfile()" class="text-emerald-500">Ubah</button>
+          </div>
+          <div class="flex items-center justify-between py-3 border-b border-gray-700">
+            <span>Notifikasi</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" checked class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-700 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+            </label>
+          </div>
+          <div class="flex items-center justify-between py-3 border-b border-gray-700">
+            <span>Hapus Chat</span>
+            <button onclick="clearChat()" class="text-red-500">Hapus</button>
+          </div>
+          <div class="flex items-center justify-between py-3">
+            <span>Putuskan Koneksi</span>
+            <button onclick="disconnect()" class="text-red-500">Putuskan</button>
+          </div>
+        </div>
+        <button onclick="closeSettings()" class="w-full mt-6 btn-secondary py-2 rounded-xl">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============ STATE ============
+    const state = {
+      username: localStorage.getItem('username') || '',
+      peerName: 'Peer',
+      messages: JSON.parse(localStorage.getItem('messages') || '[]'),
+      isConnected: false,
+      isCallActive: false,
+      callType: null,
+      callStartTime: null,
+      callTimer: null,
+      isMuted: false,
+      isVideoEnabled: true,
+      pendingOffer: null
+    };
+
+    // ============ WEBRTC ============
+    let peerConnection = null;
+    let dataChannel = null;
+    let localStream = null;
+    let remoteStream = null;
+
+    const config = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+      ]
+    };
+
+    // ============ INITIALIZATION ============
+    function init() {
+      if (state.username) {
+        document.getElementById('profileSetup').classList.add('hidden');
+        document.getElementById('connectionSetup').classList.remove('hidden');
+        document.getElementById('avatarPreview').textContent = state.username.charAt(0).toUpperCase();
+      }
+      renderMessages();
+    }
+
+    // ============ PROFILE ============
+    function saveProfile() {
+      const username = document.getElementById('usernameInput').value.trim();
+      if (!username) {
+        alert('Masukkan nama Anda');
+        return;
+      }
+      state.username = username;
+      localStorage.setItem('username', username);
+      document.getElementById('avatarPreview').textContent = username.charAt(0).toUpperCase();
+      document.getElementById('profileSetup').classList.add('hidden');
+      document.getElementById('connectionSetup').classList.remove('hidden');
+    }
+
+    // ============ WEBRTC CONNECTION ============
+    function createPeerConnection() {
+      peerConnection = new RTCPeerConnection(config);
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate === null) {
+          const sdp = peerConnection.localDescription;
+          document.getElementById('offerCode').value = btoa(JSON.stringify(sdp));
+        }
+      };
+
+      peerConnection.onconnectionstatechange = () => {
+        console.log('Connection state:', peerConnection.connectionState);
+        if (peerConnection.connectionState === 'connected') {
+          state.isConnected = true;
+          updateConnectionUI(true);
+        } else if (peerConnection.connectionState === 'disconnected' || 
+                   peerConnection.connectionState === 'failed') {
+          state.isConnected = false;
+          updateConnectionUI(false);
+        }
+      };
+
+      peerConnection.ondatachannel = (event) => {
+        dataChannel = event.channel;
+        setupDataChannel();
+      };
+
+      peerConnection.ontrack = (event) => {
+        console.log('Received remote track');
+        const remoteVideo = document.getElementById('remoteVideo');
+        if (remoteVideo.srcObject !== event.streams[0]) {
+          remoteVideo.srcObject = event.streams[0];
+          remoteStream = event.streams[0];
+        }
+      };
+    }
+
+    function setupDataChannel() {
+      dataChannel.onopen = () => {
+        console.log('Data channel opened');
+        state.isConnected = true;
+        updateConnectionUI(true);
+        // Send profile info
+        sendData({ type: 'profile', username: state.username });
+      };
+
+      dataChannel.onclose = () => {
+        console.log('Data channel closed');
+        state.isConnected = false;
+        updateConnectionUI(false);
+      };
+
+      dataChannel.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleIncomingData(data);
+      };
+    }
+
+    function updateConnectionUI(connected) {
+      const dot = document.getElementById('connectionDot');
+      const status = document.getElementById('connectionStatus');
+      const info = document.getElementById('connectedInfo');
+
+      if (connected) {
+        dot.classList.add('connected');
+        status.textContent = 'Terhubung';
+        document.getElementById('offerSection').classList.add('hidden');
+        document.getElementById('answerSection').classList.add('hidden');
+        info.classList.remove('hidden');
+      } else {
+        dot.classList.remove('connected');
+        status.textContent = 'Tidak terhubung';
+        info.classList.add('hidden');
+      }
+    }
+
+    // ============ CREATE OFFER ============
+    async function createOffer() {
+      createPeerConnection();
+      
+      dataChannel = peerConnection.createDataChannel('chat');
+      setupDataChannel();
+
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      document.getElementById('offerSection').classList.remove('hidden');
+      document.getElementById('answerSection').classList.remove('hidden');
+    }
+
+    function copyOffer() {
+      const code = document.getElementById('offerCode').value;
+      navigator.clipboard.writeText(code).then(() => {
+        alert('Kode berhasil disalin!');
+      });
+    }
+
+    // ============ SET ANSWER ============
+    async function setAnswer() {
+      const answerCode = document.getElementById('answerInput').value.trim();
+      if (!answerCode) {
+        alert('Masukkan kode jawaban');
+        return;
+      }
+
+      try {
+        const answer = JSON.parse(atob(answerCode));
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      } catch (e) {
+        alert('Kode tidak valid: ' + e.message);
+      }
+    }
+
+    // ============ JOIN ROOM ============
+    function showJoinModal() {
+      document.getElementById('joinModal').classList.add('active');
+    }
+
+    function closeJoinModal() {
+      document.getElementById('joinModal').classList.remove('active');
+    }
+
+    async function joinRoom() {
+      const offerCode = document.getElementById('offerInput').value.trim();
+      if (!offerCode) {
+        alert('Masukkan kode room');
+        return;
+      }
+
+      try {
+        createPeerConnection();
+
+        const offer = JSON.parse(atob(offerCode));
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        closeJoinModal();
+        
+        // Show answer for sharing
+        document.getElementById('offerSection').classList.remove('hidden');
+        document.getElementById('offerCode').value = btoa(JSON.stringify(answer));
+        
+        alert('Kode jawaban telah dibuat. Salin dan kirim ke lawan.');
+      } catch (e) {
+        alert('Kode tidak valid: ' + e.message);
+      }
+    }
+
+    // ============ DATA TRANSFER ============
+    function sendData(data) {
+      if (dataChannel && dataChannel.readyState === 'open') {
+        dataChannel.send(JSON.stringify(data));
+      }
+    }
+
+    function handleIncomingData(data) {
+      switch (data.type) {
+        case 'profile':
+          state.peerName = data.username;
+          document.getElementById('peerName').textContent = data.username;
+          document.getElementById('peerAvatar').textContent = data.username.charAt(0).toUpperCase();
+          break;
+
+        case 'message':
+          addMessage({
+            id: Date.now(),
+            text: data.text,
+            sender: 'peer',
+            time: new Date().toISOString()
+          });
+          break;
+
+        case 'file':
+          addMessage({
+            id: Date.now(),
+            fileData: data.fileData,
+            fileName: data.fileName,
+            fileType: data.fileType,
+            sender: 'peer',
+            time: new Date().toISOString()
+          });
+          break;
+
+        case 'typing':
+          showTypingIndicator();
+          break;
+
+        case 'call-offer':
+          handleIncomingCall(data);
+          break;
+
+        case 'call-answer':
+          handleCallAnswer(data);
+          break;
+
+        case 'call-reject':
+          endCall();
+          alert('Panggilan ditolak');
+          break;
+
+        case 'call-end':
+          endCall();
+          break;
+      }
+    }
+
+    // ============ MESSAGING ============
+    function startChat() {
+      document.getElementById('setupScreen').classList.add('hidden');
+      document.getElementById('chatScreen').classList.remove('hidden');
+    }
+
+    function addMessage(message) {
+      state.messages.push(message);
+      localStorage.setItem('messages', JSON.stringify(state.messages));
+      renderMessages();
+    }
+
+    function renderMessages() {
+      const container = document.getElementById('chatMessages');
+      if (!container) return;
+
+      container.innerHTML = state.messages.map(msg => {
+        const isMe = msg.sender === 'me';
+        const time = new Date(msg.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        
+        let content = '';
+        if (msg.fileData) {
+          if (msg.fileType.startsWith('image/')) {
+            content = `<img src="${msg.fileData}" alt="${msg.fileName}" class="file-preview">`;
+          } else if (msg.fileType.startsWith('video/')) {
+            content = `<video src="${msg.fileData}" controls class="file-preview"></video>`;
+          }
+          content += `<p class="text-xs opacity-70">${msg.fileName}</p>`;
+        }
+        if (msg.text) {
+          content += `<p>${msg.text}</p>`;
+        }
+
+        return `
+          <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-3">
+            <div class="message-bubble ${isMe ? 'bg-emerald-600 rounded-2xl rounded-br-md' : 'bg-gray-700 rounded-2xl rounded-bl-md'} px-4 py-2">
+              ${content}
+              <p class="text-xs opacity-50 mt-1 text-right">${time}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (!text || !state.isConnected) return;
+
+      const message = {
+        id: Date.now(),
+        text: text,
+        sender: 'me',
+        time: new Date().toISOString()
+      };
+
+      addMessage(message);
+      sendData({ type: 'message', text: text });
+      input.value = '';
+      input.style.height = 'auto';
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    function autoResize(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+    }
+
+    // ============ FILE SHARING ============
+    async function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Check file size (max 5MB for data channel)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File terlalu besar. Maksimal 5MB.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const fileData = e.target.result;
+
+        const message = {
+          id: Date.now(),
+          fileData: fileData,
+          fileName: file.name,
+          fileType: file.type,
+          sender: 'me',
+          time: new Date().toISOString()
+        };
+
+        addMessage(message);
+        sendData({
+          type: 'file',
+          fileData: fileData,
+          fileName: file.name,
+          fileType: file.type
+        });
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    }
+
+    // ============ CALLS ============
+    async function startVoiceCall() {
+      state.callType = 'voice';
+      await initiateCall(false);
+    }
+
+    async function startVideoCall() {
+      state.callType = 'video';
+      await initiateCall(true);
+    }
+
+    async function initiateCall(withVideo) {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: withVideo
+        });
+
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        sendData({
+          type: 'call-offer',
+          sdp: btoa(JSON.stringify(offer)),
+          isVideo: withVideo
+        });
+
+        showCallScreen(withVideo);
+        document.getElementById('callStatusText').textContent = 'Menghubungi...';
+      } catch (e) {
+        alert('Tidak dapat mengakses kamera/mikrofon: ' + e.message);
+      }
+    }
+
+    async function handleIncomingCall(data) {
+      state.pendingOffer = data;
+      document.getElementById('callerName').textContent = state.peerName;
+      document.getElementById('callerAvatar').textContent = state.peerName.charAt(0).toUpperCase();
+      document.getElementById('callTypeText').textContent = data.isVideo ? 'Panggilan video masuk...' : 'Panggilan suara masuk...';
+      document.getElementById('incomingCallModal').classList.add('active');
+    }
+
+    async function acceptCall() {
+      document.getElementById('incomingCallModal').classList.remove('active');
+      
+      const data = state.pendingOffer;
+      state.callType = data.isVideo ? 'video' : 'voice';
+
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: data.isVideo
+        });
+
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+
+        const offer = JSON.parse(atob(data.sdp));
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        sendData({
+          type: 'call-answer',
+          sdp: btoa(JSON.stringify(answer))
+        });
+
+        showCallScreen(data.isVideo);
+      } catch (e) {
+        alert('Tidak dapat mengakses kamera/mikrofon: ' + e.message);
+      }
+    }
+
+    function rejectCall() {
+      document.getElementById('incomingCallModal').classList.remove('active');
+      sendData({ type: 'call-reject' });
+    }
+
+    async function handleCallAnswer(data) {
+      const answer = JSON.parse(atob(data.sdp));
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      document.getElementById('callStatusText').textContent = 'Terhubung';
+    }
+
+    function showCallScreen(withVideo) {
+      state.isCallActive = true;
+      document.getElementById('callScreen').classList.remove('hidden');
+      document.getElementById('localVideo').srcObject = localStream;
+
+      if (!withVideo) {
+        document.getElementById('remoteVideo').style.background = 'linear-gradient(135deg, #1f2937 0%, #111827 100%)';
+        document.getElementById('localVideo').style.display = 'none';
+      } else {
+        document.getElementById('localVideo').style.display = 'block';
+      }
+
+      // Start call timer
+      state.callStartTime = Date.now();
+      state.callTimer = setInterval(updateCallDuration, 1000);
+    }
+
+    function updateCallDuration() {
+      const elapsed = Math.floor((Date.now() - state.callStartTime) / 1000);
+      const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+      const seconds = (elapsed % 60).toString().padStart(2, '0');
+      document.getElementById('callDuration').textContent = `${minutes}:${seconds}`;
+    }
+
+    function toggleMute() {
+      if (!localStream) return;
+      state.isMuted = !state.isMuted;
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = !state.isMuted;
+      });
+      
+      const btn = document.getElementById('muteBtn');
+      btn.style.background = state.isMuted ? 'var(--danger)' : '';
+    }
+
+    function toggleVideo() {
+      if (!localStream) return;
+      state.isVideoEnabled = !state.isVideoEnabled;
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = state.isVideoEnabled;
+      });
+      
+      const btn = document.getElementById('videoBtn');
+      btn.style.background = !state.isVideoEnabled ? 'var(--danger)' : '';
+    }
+
+    function endCall() {
+      state.isCallActive = false;
+      clearInterval(state.callTimer);
+      
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+
+      document.getElementById('callScreen').classList.add('hidden');
+      document.getElementById('localVideo').srcObject = null;
+      document.getElementById('remoteVideo').srcObject = null;
+      document.getElementById('callDuration').textContent = '00:00';
+      
+      if (state.isConnected) {
+        sendData({ type: 'call-end' });
+      }
+    }
+
+    // ============ SETTINGS ============
+    function showSettings() {
+      document.getElementById('settingsModal').classList.add('active');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('active');
+    }
+
+    function editProfile() {
+      closeSettings();
+      document.getElementById('chatScreen').classList.add('hidden');
+      document.getElementById('setupScreen').classList.remove('hidden');
+      document.getElementById('profileSetup').classList.remove('hidden');
+      document.getElementById('connectionSetup').classList.add('hidden');
+      document.getElementById('usernameInput').value = state.username;
+    }
+
+    function clearChat() {
+      if (confirm('Hapus semua chat?')) {
+        state.messages = [];
+        localStorage.removeItem('messages');
+        renderMessages();
+        closeSettings();
+      }
+    }
+
+    function disconnect() {
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      dataChannel = null;
+      state.isConnected = false;
+      closeSettings();
+      document.getElementById('chatScreen').classList.add('hidden');
+      document.getElementById('setupScreen').classList.remove('hidden');
+      updateConnectionUI(false);
+    }
+
+    // ============ TYPING INDICATOR ============
+    let typingTimeout = null;
+    function showTypingIndicator() {
+      clearTimeout(typingTimeout);
+      // Could add typing indicator UI here
+      typingTimeout = setTimeout(() => {
+        // Hide typing indicator
+      }, 2000);
+    }
+
+    // ============ INIT ============
+    init();
+  </script>
+</body>
+</html>
